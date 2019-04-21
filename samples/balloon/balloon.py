@@ -126,6 +126,12 @@ class BalloonDataset(utils.Dataset):
                 polygons = [r['shape_attributes'] for r in a['regions'].values()]
             else:
                 polygons = [r['shape_attributes'] for r in a['regions']] 
+            # 
+            # polygons ：类型
+            # [
+                # {'all_points_x':all_points_x, 'all_points_y':all_points_y, 'name':'polygons'}
+                # {'all_points_x':all_points_x, 'all_points_y':all_points_y, 'name':'polygons'}
+            # ]
 
             # load_mask() needs the image size to convert polygons to masks.
             # Unfortunately, VIA doesn't include it in JSON, so we must read

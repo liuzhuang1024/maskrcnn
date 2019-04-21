@@ -33,6 +33,7 @@ import json
 import datetime
 import numpy as np
 import skimage.draw
+import cv2
 
 # Root directory of the project
 ROOT_DIR = os.path.abspath("../../")
@@ -109,20 +110,27 @@ class BalloonDataset(utils.Dataset):
         # }
         # We mostly care about the x and y coordinates of each region
         # Note: In VIA 2.0, regions was changed from a dict to a list.
-        data = annotations = json.load(open(os.path.join(dataset_dir, "train_labels.json")))
+        data = annotations = json.load(open(os.path.join(dataset_dir, "train.json")))
         anntion = []
+        i = 0
         for file_name in data:
-            if file_name in ['gt_3137', 'gt_4514', 'gt_5444']:
+            # if file_name in ['gt_3137', 'gt_4514', 'gt_5444']:
+            #     continue
+            img = cv2.imread(os.path.join(dataset_dir, file_name+'.jpg'))
+            if img.shape[0]>4000:
                 continue
-            point_all = []
-            for point in data[file_name]:
-                point_x = []
-                point_y = []
-                for _ in point['points']:
-                    point_x.append(_[0])
-                    point_y.append(_[1])
-                point_all.append({'all_points_x':point_x, 'all_points_y':point_y, 'name':'polygon'})
-            anntion.append({'filename':file_name+'.jpg', 'point':point_all})
+            i += 1
+            if i>15:
+                break
+            # print(file_name)
+            # for point in data[file_name]['point']:
+                # point_x = []
+                # point_y = []
+                # for _ in point['points']:
+                #     point_x.append(_[0])
+                #     point_y.append(_[1])
+                # point_all.append({'all_points_x':point['point'], 'all_points_y':point_y, 'name':'text'})
+            anntion.append({'filename':file_name+'.jpg', 'point':data[file_name]['point']})
         # annotations = list(annotations.values())  # don't need the dict keys
 
         # The VIA tool saves images in the JSON even if they don't have any
@@ -239,22 +247,41 @@ def color_splash(image, mask):
     return splash
 
 
-def detect_and_color_splash(model, image_path=None, video_path=None):
+def detect_and_color_splash(model, image_path=None, video_path=None, out_path='output/'):
     assert image_path or video_path
-
+    # 创建输出文件夹
+    mkdir(out_path)
     # Image or video?
     if image_path:
-        # Run model detection and generate the color splash effect
-        print("Running on {}".format(args.image))
-        # Read image
-        image = skimage.io.imread(args.image)
-        # Detect objects
-        r = model.detect([image], verbose=1)[0]
-        # Color splash
-        splash = color_splash(image, r['masks'])
-        # Save output
-        file_name = "splash_{:%Y%m%dT%H%M%S}.png".format(datetime.datetime.now())
-        skimage.io.imsave(file_name, splash)
+        if os.path.isfile(args.image):
+            # Run model detection and generate the color splash effect
+            print("Running on {}".format(args.image))
+            # Read image
+            image = skimage.io.imread(args.image)
+            # Detect objects
+            r = model.detect([image], verbose=1)[0]
+            # Color splash
+            splash = color_splash(image, r['masks'])
+            # Save output
+            file_name = "splash_{:%Y%m%dT%H%M%S}.png".format(datetime.datetime.now())
+
+            skimage.io.imsave(out_path+file_name, splash)
+        else:
+            for name in os.listdir(args.image):
+                if name[-4:] != '.jpg':
+                    continue
+                # Run model detection and generate the color splash effect
+                print("Running on {}".format(args.image))
+                # Read image
+                image = skimage.io.imread(args.image+'/'+name)
+                # Detect objects
+                r = model.detect([image], verbose=1)[0]
+                # Color splash
+                splash = color_splash(image, r['masks'])
+                # Save output
+                file_name = "splash_{:%Y%m%dT%H%M%S}.png".format(datetime.datetime.now())
+
+                skimage.io.imsave(out_path+file_name, splash)
     elif video_path:
         import cv2
         # Video capture
@@ -289,6 +316,14 @@ def detect_and_color_splash(model, image_path=None, video_path=None):
                 count += 1
         vwriter.release()
     print("Saved to ", file_name)
+
+
+
+import shutil
+def mkdir(path):
+    if os.path.exists(path):
+        shutil.rmtree(path)
+    os.mkdir(path)
 
 
 ############################################################
